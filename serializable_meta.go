@@ -1,7 +1,12 @@
 package serializable_meta
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"errors"
+	"os"
+	"path"
+	"strings"
 
 	"github.com/qor/qor"
 	"github.com/qor/qor/admin"
@@ -15,32 +20,63 @@ type SerializableMetaInterface interface {
 	SetSerializableArgumentValue(interface{})
 }
 
-type SerializableArgument struct {
+type SerializableMeta struct {
 	Kind  string
-	Value string `sql:"size:65532"`
+	Value SerializableArgument `sql:"size:65532"`
 }
 
-func (serialize SerializableArgument) GetSerializableArgumentKind() string {
+type SerializableArgument struct {
+	SerializdValue string
+	originalValue  interface{}
+}
+
+func (sa *SerializableArgument) Scan(data interface{}) (err error) {
+	switch values := data.(type) {
+	case []byte:
+		sa.SerializdValue = string(values)
+	case string:
+		sa.SerializdValue = values
+	default:
+		err = errors.New("unsupported driver -> Scan pair for MediaLibrary")
+	}
+	return
+}
+
+func (sa SerializableArgument) Value() (driver.Value, error) {
+	if sa.originalValue == nil {
+		result, err := json.Marshal(sa.originalValue)
+		return string(result), err
+	}
+	return sa.SerializdValue, nil
+}
+
+func (serialize SerializableMeta) GetSerializableArgumentKind() string {
 	return serialize.Kind
 }
 
-func (serialize *SerializableArgument) GetSerializableArgument(serializableMetaInterface SerializableMetaInterface) interface{} {
+func (serialize *SerializableMeta) GetSerializableArgument(serializableMetaInterface SerializableMetaInterface) interface{} {
+	if serialize.Value.originalValue != nil {
+		return serialize.Value.originalValue
+	}
+
 	if res := serializableMetaInterface.GetSerializableArgumentResource(); res != nil {
 		value := res.NewStruct()
-		json.Unmarshal([]byte(serialize.Value), value)
+		json.Unmarshal([]byte(serialize.Value.SerializdValue), value)
 		return value
 	}
 	return nil
 }
 
-func (serialize *SerializableArgument) SetSerializableArgumentValue(value interface{}) {
-	if bytes, err := json.Marshal(value); err == nil {
-		serialize.Value = string(bytes)
-	}
+func (serialize *SerializableMeta) SetSerializableArgumentValue(value interface{}) {
+	serialize.Value.originalValue = value
 }
 
-func (serialize *SerializableArgument) ConfigureQorResourceBeforeInitialize(res resource.Resourcer) {
+func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res resource.Resourcer) {
 	if res, ok := res.(*admin.Resource); ok {
+		for _, gopath := range strings.Split(os.Getenv("GOPATH"), ":") {
+			admin.RegisterViewPath(path.Join(gopath, "src/github.com/qor/serializable_meta/views"))
+		}
+
 		if _, ok := res.Value.(SerializableMetaInterface); ok {
 			if res.GetMeta("Kind") == nil {
 				res.Meta(&admin.Meta{
@@ -56,10 +92,10 @@ func (serialize *SerializableArgument) ConfigureQorResourceBeforeInitialize(res 
 				})
 			}
 
-			if res.GetMeta("SerializableArgument") == nil {
+			if res.GetMeta("SerializableMeta") == nil {
 				res.Meta(&admin.Meta{
-					Name: "SerializableArgument",
-					Type: "serialize_argument",
+					Name: "SerializableMeta",
+					Type: "serializable_meta",
 					Valuer: func(value interface{}, context *qor.Context) interface{} {
 						if serializeArgument, ok := value.(SerializableMetaInterface); ok {
 							return struct {
@@ -91,8 +127,8 @@ func (serialize *SerializableArgument) ConfigureQorResourceBeforeInitialize(res 
 				})
 			}
 
-			res.NewAttrs("Kind", "SerializableArgument")
-			res.EditAttrs("ID", "Kind", "SerializableArgument")
+			res.NewAttrs("Kind", "SerializableMeta")
+			res.EditAttrs("ID", "Kind", "SerializableMeta")
 		}
 	}
 }
