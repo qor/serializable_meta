@@ -43,7 +43,7 @@ func (sa *SerializableArgument) Scan(data interface{}) (err error) {
 }
 
 func (sa SerializableArgument) Value() (driver.Value, error) {
-	if sa.originalValue == nil {
+	if sa.originalValue != nil {
 		result, err := json.Marshal(sa.originalValue)
 		return string(result), err
 	}
@@ -114,9 +114,11 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 							value := serializeArgumentResource.NewStruct()
 
 							for _, meta := range serializeArgumentResource.GetMetas([]string{}) {
-								if metaValue := metaValue.MetaValues.Get(meta.GetName()); metaValue != nil {
-									if setter := meta.GetSetter(); setter != nil {
-										setter(value, metaValue, context)
+								for _, metaValue := range metaValue.MetaValues.Values {
+									if meta.GetName() == metaValue.Name {
+										if setter := meta.GetSetter(); setter != nil {
+											setter(value, metaValue, context)
+										}
 									}
 								}
 							}
