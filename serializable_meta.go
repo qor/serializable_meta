@@ -26,16 +26,16 @@ type SerializableMeta struct {
 }
 
 type SerializableArgument struct {
-	SerializdValue string
-	originalValue  interface{}
+	SerializedValue string
+	OriginalValue   interface{}
 }
 
 func (sa *SerializableArgument) Scan(data interface{}) (err error) {
 	switch values := data.(type) {
 	case []byte:
-		sa.SerializdValue = string(values)
+		sa.SerializedValue = string(values)
 	case string:
-		sa.SerializdValue = values
+		sa.SerializedValue = values
 	default:
 		err = errors.New("unsupported driver -> Scan pair for MediaLibrary")
 	}
@@ -43,11 +43,11 @@ func (sa *SerializableArgument) Scan(data interface{}) (err error) {
 }
 
 func (sa SerializableArgument) Value() (driver.Value, error) {
-	if sa.originalValue != nil {
-		result, err := json.Marshal(sa.originalValue)
+	if sa.OriginalValue != nil {
+		result, err := json.Marshal(sa.OriginalValue)
 		return string(result), err
 	}
-	return sa.SerializdValue, nil
+	return sa.SerializedValue, nil
 }
 
 func (serialize SerializableMeta) GetSerializableArgumentKind() string {
@@ -55,20 +55,20 @@ func (serialize SerializableMeta) GetSerializableArgumentKind() string {
 }
 
 func (serialize *SerializableMeta) GetSerializableArgument(serializableMetaInterface SerializableMetaInterface) interface{} {
-	if serialize.Value.originalValue != nil {
-		return serialize.Value.originalValue
+	if serialize.Value.OriginalValue != nil {
+		return serialize.Value.OriginalValue
 	}
 
 	if res := serializableMetaInterface.GetSerializableArgumentResource(); res != nil {
 		value := res.NewStruct()
-		json.Unmarshal([]byte(serialize.Value.SerializdValue), value)
+		json.Unmarshal([]byte(serialize.Value.SerializedValue), value)
 		return value
 	}
 	return nil
 }
 
 func (serialize *SerializableMeta) SetSerializableArgumentValue(value interface{}) {
-	serialize.Value.originalValue = value
+	serialize.Value.OriginalValue = value
 }
 
 func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res resource.Resourcer) {
