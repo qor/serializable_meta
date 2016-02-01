@@ -110,20 +110,21 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 					},
 					Setter: func(result interface{}, metaValue *resource.MetaValue, context *qor.Context) {
 						if serializeArgument, ok := result.(SerializableMetaInterface); ok {
-							serializeArgumentResource := serializeArgument.GetSerializableArgumentResource()
-							value := serializeArgumentResource.NewStruct()
+							if serializeArgumentResource := serializeArgument.GetSerializableArgumentResource(); serializeArgumentResource != nil {
+								value := serializeArgumentResource.NewStruct()
 
-							for _, meta := range serializeArgumentResource.GetMetas([]string{}) {
-								for _, metaValue := range metaValue.MetaValues.Values {
-									if meta.GetName() == metaValue.Name {
-										if setter := meta.GetSetter(); setter != nil {
-											setter(value, metaValue, context)
+								for _, meta := range serializeArgumentResource.GetMetas([]string{}) {
+									for _, metaValue := range metaValue.MetaValues.Values {
+										if meta.GetName() == metaValue.Name {
+											if setter := meta.GetSetter(); setter != nil {
+												setter(value, metaValue, context)
+											}
 										}
 									}
 								}
-							}
 
-							serializeArgument.SetSerializableArgumentValue(value)
+								serializeArgument.SetSerializableArgumentValue(value)
+							}
 						}
 					},
 				})
