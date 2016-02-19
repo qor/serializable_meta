@@ -4,9 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"os"
-	"path"
-	"strings"
 
 	"github.com/qor/qor"
 	"github.com/qor/qor/admin"
@@ -73,9 +70,7 @@ func (serialize *SerializableMeta) SetSerializableArgumentValue(value interface{
 
 func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res resource.Resourcer) {
 	if res, ok := res.(*admin.Resource); ok {
-		for _, gopath := range strings.Split(os.Getenv("GOPATH"), ":") {
-			admin.RegisterViewPath(path.Join(gopath, "src/github.com/qor/serializable_meta/views"))
-		}
+		admin.RegisterViewPath("github.com/qor/serializable_meta/views")
 
 		if _, ok := res.Value.(SerializableMetaInterface); ok {
 			if res.GetMeta("Kind") == nil {
