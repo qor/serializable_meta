@@ -10,6 +10,7 @@ import (
 	"github.com/qor/qor/resource"
 )
 
+// SerializableMetaInterface is a interface defined methods need for a serializable model
 type SerializableMetaInterface interface {
 	GetSerializableArgumentResource() *admin.Resource
 	GetSerializableArgument(SerializableMetaInterface) interface{}
@@ -17,17 +18,18 @@ type SerializableMetaInterface interface {
 	SetSerializableArgumentValue(interface{})
 }
 
+// SerializableMeta default struct that implemented SerializableMetaInterface
 type SerializableMeta struct {
 	Kind  string
-	Value SerializableArgument `sql:"size:65532"`
+	Value serializableArgument `sql:"size:65532"`
 }
 
-type SerializableArgument struct {
+type serializableArgument struct {
 	SerializedValue string
 	OriginalValue   interface{}
 }
 
-func (sa *SerializableArgument) Scan(data interface{}) (err error) {
+func (sa *serializableArgument) Scan(data interface{}) (err error) {
 	switch values := data.(type) {
 	case []byte:
 		sa.SerializedValue = string(values)
@@ -39,7 +41,7 @@ func (sa *SerializableArgument) Scan(data interface{}) (err error) {
 	return
 }
 
-func (sa SerializableArgument) Value() (driver.Value, error) {
+func (sa serializableArgument) Value() (driver.Value, error) {
 	if sa.OriginalValue != nil {
 		result, err := json.Marshal(sa.OriginalValue)
 		return string(result), err
@@ -47,10 +49,12 @@ func (sa SerializableArgument) Value() (driver.Value, error) {
 	return sa.SerializedValue, nil
 }
 
+// GetSerializableArgumentKind get serializable argument kind
 func (serialize SerializableMeta) GetSerializableArgumentKind() string {
 	return serialize.Kind
 }
 
+// GetSerializableArgument get serializable argument
 func (serialize *SerializableMeta) GetSerializableArgument(serializableMetaInterface SerializableMetaInterface) interface{} {
 	if serialize.Value.OriginalValue != nil {
 		return serialize.Value.OriginalValue
@@ -64,10 +68,12 @@ func (serialize *SerializableMeta) GetSerializableArgument(serializableMetaInter
 	return nil
 }
 
+// SetSerializableArgumentValue set serializable argument value
 func (serialize *SerializableMeta) SetSerializableArgumentValue(value interface{}) {
 	serialize.Value.OriginalValue = value
 }
 
+// ConfigureQorResourceBeforeInitialize configure qor resource for qor admin
 func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res resource.Resourcer) {
 	if res, ok := res.(*admin.Resource); ok {
 		admin.RegisterViewPath("github.com/qor/serializable_meta/views")
@@ -80,9 +86,8 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 					Valuer: func(value interface{}, context *qor.Context) interface{} {
 						if context.GetDB().NewScope(value).PrimaryKeyZero() {
 							return nil
-						} else {
-							return value.(SerializableMetaInterface).GetSerializableArgumentKind()
 						}
+						return value.(SerializableMetaInterface).GetSerializableArgumentKind()
 					},
 				})
 			}
