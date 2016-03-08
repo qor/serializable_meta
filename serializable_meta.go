@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/qor/qor"
-	"github.com/qor/qor/admin"
+	"github.com/qor/admin"
 	"github.com/qor/qor/resource"
 )
 
