@@ -1,6 +1,6 @@
 # Serializable Meta
 
-Serializable Meta is used for cases that a model will keep different type data based on its type, it will serialize different type data as JSON and save it into database.
+Serializable Meta allows the developer to specify, for a given model, a custom serialization model along with field mappings. This mechanism thus allows one model to act as another model when it comes to serialization.
 
 [![GoDoc](https://godoc.org/github.com/qor/serializable_meta?status.svg)](https://godoc.org/github.com/qor/serializable_meta)
 
@@ -10,10 +10,10 @@ Serializable Meta is used for cases that a model will keep different type data b
 type QorJob struct {
 	gorm.Model
   Name string
-	serializable_meta.SerializableMeta // Embed serializable_meta.SerializableMeta to get the serializable feature
+	serializable_meta.SerializableMeta // Embed serializable_meta.SerializableMeta to apply the serializable feature
 }
 
-// Needs method GetSerializableArgumentResource, so `Serializable Meta` could know your saving argument's type
+// Needs method GetSerializableArgumentResource, so `Serializable Meta` can know your saving argument's type
 func (qorJob QorJob) GetSerializableArgumentResource() *admin.Resource {
   return jobsArgumentsMap[qorJob.Kind]
 }
