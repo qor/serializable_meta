@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/qor/qor"
 	"github.com/qor/admin"
+	"github.com/qor/qor"
 	"github.com/qor/qor/resource"
 )
 
@@ -76,7 +76,7 @@ func (serialize *SerializableMeta) SetSerializableArgumentValue(value interface{
 // ConfigureQorResourceBeforeInitialize configure qor resource for qor admin
 func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res resource.Resourcer) {
 	if res, ok := res.(*admin.Resource); ok {
-		admin.RegisterViewPath("github.com/qor/serializable_meta/views")
+		res.GetAdmin().RegisterViewPath("github.com/qor/serializable_meta/views")
 
 		if _, ok := res.Value.(SerializableMetaInterface); ok {
 			if res.GetMeta("Kind") == nil {
