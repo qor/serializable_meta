@@ -56,7 +56,7 @@ func (serialize SerializableMeta) GetSerializableArgumentKind() string {
 }
 
 // SetSerializableArgumentKind set serializable argument kind
-func (serialize SerializableMeta) SetSerializableArgumentKind(name string) {
+func (serialize *SerializableMeta) SetSerializableArgumentKind(name string) {
 	serialize.Kind = name
 }
 
