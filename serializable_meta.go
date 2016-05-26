@@ -15,6 +15,7 @@ type SerializableMetaInterface interface {
 	GetSerializableArgumentResource() *admin.Resource
 	GetSerializableArgument(SerializableMetaInterface) interface{}
 	GetSerializableArgumentKind() string
+	SetSerializableArgumentKind(name string)
 	SetSerializableArgumentValue(interface{})
 }
 
@@ -52,6 +53,11 @@ func (sa serializableArgument) Value() (driver.Value, error) {
 // GetSerializableArgumentKind get serializable argument kind
 func (serialize SerializableMeta) GetSerializableArgumentKind() string {
 	return serialize.Kind
+}
+
+// SetSerializableArgumentKind set serializable argument kind
+func (serialize SerializableMeta) SetSerializableArgumentKind(name string) {
+	serialize.Kind = name
 }
 
 // GetSerializableArgument get serializable argument
