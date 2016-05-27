@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"reflect"
 
 	"github.com/qor/admin"
 	"github.com/qor/qor"
@@ -117,20 +118,31 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 					Setter: func(result interface{}, metaValue *resource.MetaValue, context *qor.Context) {
 						if serializeArgument, ok := result.(SerializableMetaInterface); ok {
 							if serializeArgumentResource := serializeArgument.GetSerializableArgumentResource(); serializeArgumentResource != nil {
-								var setMeta func(metaors []resource.Metaor, metaValues []*resource.MetaValue)
+								var setMeta func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue)
 								value := serializeArgumentResource.NewStruct()
 
-								setMeta = func(metaors []resource.Metaor, metaValues []*resource.MetaValue) {
+								setMeta = func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue) {
 									for _, meta := range metaors {
 										for _, metaValue := range metaValues {
 											if meta.GetName() == metaValue.Name {
 												if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil {
-													setMeta(metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+													nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
+
+													if nestedFieldValue.Kind() == reflect.Struct {
+														nestedValue := nestedFieldValue.Addr().Interface()
+														setMeta(nestedValue, metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+													}
+
+													if nestedFieldValue.Kind() == reflect.Slice {
+														fieldValue := reflect.New(nestedFieldValue.Type().Elem())
+														setMeta(fieldValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+														nestedFieldValue.Set(reflect.Append(nestedFieldValue, fieldValue.Elem()))
+													}
 													continue
 												}
 
 												if setter := meta.GetSetter(); setter != nil {
-													setter(value, metaValue, context)
+													setter(record, metaValue, context)
 													continue
 												}
 											}
@@ -138,7 +150,7 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 									}
 								}
 
-								setMeta(serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+								setMeta(value, serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
 								serializeArgument.SetSerializableArgumentValue(value)
 							}
 						}
