@@ -126,12 +126,12 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 											if meta.GetName() == metaValue.Name {
 												if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil {
 													setMeta(metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-													break
+													continue
 												}
 
 												if setter := meta.GetSetter(); setter != nil {
 													setter(value, metaValue, context)
-													break
+													continue
 												}
 											}
 										}
