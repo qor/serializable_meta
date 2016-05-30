@@ -125,7 +125,7 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 									for _, meta := range metaors {
 										for _, metaValue := range metaValues {
 											if meta.GetName() == metaValue.Name {
-												if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil {
+												if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil && metaValue.MetaValues != nil {
 													nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
 
 													if nestedFieldValue.Kind() == reflect.Struct {
