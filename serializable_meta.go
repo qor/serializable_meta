@@ -136,7 +136,9 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 													if nestedFieldValue.Kind() == reflect.Slice {
 														fieldValue := reflect.New(nestedFieldValue.Type().Elem())
 														setMeta(fieldValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-														nestedFieldValue.Set(reflect.Append(nestedFieldValue, fieldValue.Elem()))
+														if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), fieldValue.Elem().Interface()) {
+															nestedFieldValue.Set(reflect.Append(nestedFieldValue, fieldValue.Elem()))
+														}
 													}
 													continue
 												}
