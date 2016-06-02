@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/qor/admin"
@@ -135,9 +136,11 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 
 													if nestedFieldValue.Kind() == reflect.Slice {
 														fieldValue := reflect.New(nestedFieldValue.Type().Elem())
-														setMeta(fieldValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-														if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), fieldValue.Elem().Interface()) {
-															nestedFieldValue.Set(reflect.Append(nestedFieldValue, fieldValue.Elem()))
+														if destroy := metaValue.MetaValues.Get("_destroy"); destroy == nil || fmt.Sprint(destroy.Value) == "0" {
+															setMeta(fieldValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+															if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), fieldValue.Elem().Interface()) {
+																nestedFieldValue.Set(reflect.Append(nestedFieldValue, fieldValue.Elem()))
+															}
 														}
 													}
 													continue
