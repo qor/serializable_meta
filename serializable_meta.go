@@ -122,6 +122,10 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 								var setMeta func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue)
 								value := serializeArgumentResource.NewStruct()
 
+								for _, fc := range serializeArgumentResource.Validators {
+									context.AddError(fc(value, metaValue.MetaValues, context))
+								}
+
 								setMeta = func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue) {
 									for _, meta := range metaors {
 										for _, metaValue := range metaValues {
@@ -131,15 +135,32 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 
 													if nestedFieldValue.Kind() == reflect.Struct {
 														nestedValue := nestedFieldValue.Addr().Interface()
+														for _, fc := range metaResource.Validators {
+															context.AddError(fc(nestedValue, metaValue.MetaValues, context))
+														}
+
 														setMeta(nestedValue, metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+
+														for _, fc := range metaResource.Processors {
+															context.AddError(fc(nestedValue, metaValue.MetaValues, context))
+														}
 													}
 
 													if nestedFieldValue.Kind() == reflect.Slice {
-														fieldValue := reflect.New(nestedFieldValue.Type().Elem())
+														nestedValue := reflect.New(nestedFieldValue.Type().Elem())
+
+														for _, fc := range metaResource.Validators {
+															context.AddError(fc(nestedValue, metaValue.MetaValues, context))
+														}
+
 														if destroy := metaValue.MetaValues.Get("_destroy"); destroy == nil || fmt.Sprint(destroy.Value) == "0" {
-															setMeta(fieldValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-															if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), fieldValue.Elem().Interface()) {
-																nestedFieldValue.Set(reflect.Append(nestedFieldValue, fieldValue.Elem()))
+															setMeta(nestedValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+															if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), nestedValue.Elem().Interface()) {
+																nestedFieldValue.Set(reflect.Append(nestedFieldValue, nestedValue.Elem()))
+
+																for _, fc := range metaResource.Processors {
+																	context.AddError(fc(nestedValue, metaValue.MetaValues, context))
+																}
 															}
 														}
 													}
@@ -156,6 +177,10 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 								}
 
 								setMeta(value, serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+
+								for _, fc := range serializeArgumentResource.Processors {
+									context.AddError(fc(value, metaValue.MetaValues, context))
+								}
 								serializeArgument.SetSerializableArgumentValue(value)
 							}
 						}
