@@ -10,6 +10,7 @@ import (
 	"github.com/qor/admin"
 	"github.com/qor/qor"
 	"github.com/qor/qor/resource"
+	"github.com/qor/qor/utils"
 )
 
 // SerializableMetaInterface is a interface defined methods need for a serializable model
@@ -96,6 +97,9 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 							return nil
 						}
 						return value.(SerializableMetaInterface).GetSerializableArgumentKind()
+					},
+					Setter: func(value interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+						value.(SerializableMetaInterface).SetSerializableArgumentKind(utils.ToString(metaValue.Value))
 					},
 				})
 			}
