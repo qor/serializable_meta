@@ -93,9 +93,12 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 					Name: "Kind",
 					Type: "hidden",
 					Valuer: func(value interface{}, context *qor.Context) interface{} {
-						if context.GetDB().NewScope(value).PrimaryKeyZero() {
-							return nil
-						}
+						defer func() {
+							if r := recover(); r != nil {
+								utils.ExitWithMsg("SerializableMeta: Can't Get Kind")
+							}
+						}()
+
 						return value.(SerializableMetaInterface).GetSerializableArgumentKind()
 					},
 					Setter: func(value interface{}, metaValue *resource.MetaValue, context *qor.Context) {
