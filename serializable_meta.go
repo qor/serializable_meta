@@ -123,6 +123,12 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 						}
 						return nil
 					},
+					FormattedValuer: func(value interface{}, context *qor.Context) interface{} {
+						if serializeArgument, ok := value.(SerializableMetaInterface); ok {
+							return serializeArgument.GetSerializableArgument(serializeArgument)
+						}
+						return nil
+					},
 					Setter: func(result interface{}, metaValue *resource.MetaValue, context *qor.Context) {
 						if serializeArgument, ok := result.(SerializableMetaInterface); ok {
 							if serializeArgumentResource := serializeArgument.GetSerializableArgumentResource(); serializeArgumentResource != nil {
