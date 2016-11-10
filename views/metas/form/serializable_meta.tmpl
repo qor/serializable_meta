@@ -1,9 +1,10 @@
-{{if .Value}}
-  {{if .Value.Resource}}
+{{$value := (raw_value_of .ResourceValue .Meta)}}
+{{if $value}}
+  {{if $value.Resource}}
   <div class="promotion-rules-argument qor-field qor-fieldset-container">
     <div class="qor-field__block">
       <fieldset id="{{.InputId}}">
-        {{render_nested_form .Value.Value (edit_sections .Value.Resource) -1}}
+        {{render_nested_form $value (edit_sections $value.Resource) -1}}
       </fieldset>
     </div>
   </div>
