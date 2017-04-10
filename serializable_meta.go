@@ -88,138 +88,134 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 		res.GetAdmin().RegisterViewPath("github.com/qor/serializable_meta/views")
 
 		if _, ok := res.Value.(SerializableMetaInterface); ok {
-			if res.GetMeta("Kind") == nil {
-				res.Meta(&admin.Meta{
-					Name: "Kind",
-					Type: "hidden",
-					Valuer: func(value interface{}, context *qor.Context) interface{} {
-						defer func() {
-							if r := recover(); r != nil {
-								utils.ExitWithMsg("SerializableMeta: Can't Get Kind")
-							}
-						}()
-
-						return value.(SerializableMetaInterface).GetSerializableArgumentKind()
-					},
-					Setter: func(value interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-						value.(SerializableMetaInterface).SetSerializableArgumentKind(utils.ToString(metaValue.Value))
-					},
-				})
-			}
-
-			if res.GetMeta("SerializableMeta") == nil {
-				res.Meta(&admin.Meta{
-					Name: "SerializableMeta",
-					Type: "serializable_meta",
-					Valuer: func(value interface{}, context *qor.Context) interface{} {
-						if serializeArgument, ok := value.(SerializableMetaInterface); ok {
-							return struct {
-								Value    interface{}
-								Resource *admin.Resource
-							}{
-								Value:    serializeArgument.GetSerializableArgument(serializeArgument),
-								Resource: serializeArgument.GetSerializableArgumentResource(),
-							}
+			res.Meta(&admin.Meta{
+				Name: "Kind",
+				Type: "hidden",
+				Valuer: func(value interface{}, context *qor.Context) interface{} {
+					defer func() {
+						if r := recover(); r != nil {
+							utils.ExitWithMsg("SerializableMeta: Can't Get Kind")
 						}
-						return nil
-					},
-					FormattedValuer: func(value interface{}, context *qor.Context) interface{} {
-						if serializeArgument, ok := value.(SerializableMetaInterface); ok {
-							return serializeArgument.GetSerializableArgument(serializeArgument)
+					}()
+
+					return value.(SerializableMetaInterface).GetSerializableArgumentKind()
+				},
+				Setter: func(value interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					value.(SerializableMetaInterface).SetSerializableArgumentKind(utils.ToString(metaValue.Value))
+				},
+			})
+
+			res.Meta(&admin.Meta{
+				Name: "SerializableMeta",
+				Type: "serializable_meta",
+				Valuer: func(value interface{}, context *qor.Context) interface{} {
+					if serializeArgument, ok := value.(SerializableMetaInterface); ok {
+						return struct {
+							Value    interface{}
+							Resource *admin.Resource
+						}{
+							Value:    serializeArgument.GetSerializableArgument(serializeArgument),
+							Resource: serializeArgument.GetSerializableArgumentResource(),
 						}
-						return nil
-					},
-					Setter: func(result interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-						if serializeArgument, ok := result.(SerializableMetaInterface); ok {
-							if serializeArgumentResource := serializeArgument.GetSerializableArgumentResource(); serializeArgumentResource != nil {
-								var clearUpRecord, fillUpRecord func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue)
-								// Keep original value, so if user don't have permission to update some fields, we won't lost the data
-								value := serializeArgument.GetSerializableArgument(serializeArgument)
+					}
+					return nil
+				},
+				FormattedValuer: func(value interface{}, context *qor.Context) interface{} {
+					if serializeArgument, ok := value.(SerializableMetaInterface); ok {
+						return serializeArgument.GetSerializableArgument(serializeArgument)
+					}
+					return nil
+				},
+				Setter: func(result interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					if serializeArgument, ok := result.(SerializableMetaInterface); ok {
+						if serializeArgumentResource := serializeArgument.GetSerializableArgumentResource(); serializeArgumentResource != nil {
+							var clearUpRecord, fillUpRecord func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue)
+							// Keep original value, so if user don't have permission to update some fields, we won't lost the data
+							value := serializeArgument.GetSerializableArgument(serializeArgument)
 
-								for _, fc := range serializeArgumentResource.Validators {
-									context.AddError(fc(value, metaValue.MetaValues, context))
-								}
+							for _, fc := range serializeArgumentResource.Validators {
+								context.AddError(fc(value, metaValue.MetaValues, context))
+							}
 
-								// Clear all nested slices if has related form data
-								clearUpRecord = func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue) {
-									for _, meta := range metaors {
-										for _, metaValue := range metaValues {
-											if meta.GetName() == metaValue.Name {
-												if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil && metaValue.MetaValues != nil {
-													nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
-													if nestedFieldValue.Kind() == reflect.Struct {
-														clearUpRecord(nestedFieldValue.Addr().Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-													} else if nestedFieldValue.Kind() == reflect.Slice {
-														nestedFieldValue.Set(reflect.Zero(nestedFieldValue.Type()))
-													}
+							// Clear all nested slices if has related form data
+							clearUpRecord = func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue) {
+								for _, meta := range metaors {
+									for _, metaValue := range metaValues {
+										if meta.GetName() == metaValue.Name {
+											if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil && metaValue.MetaValues != nil {
+												nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
+												if nestedFieldValue.Kind() == reflect.Struct {
+													clearUpRecord(nestedFieldValue.Addr().Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+												} else if nestedFieldValue.Kind() == reflect.Slice {
+													nestedFieldValue.Set(reflect.Zero(nestedFieldValue.Type()))
 												}
 											}
 										}
 									}
 								}
-								clearUpRecord(value, serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+							}
+							clearUpRecord(value, serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
 
-								fillUpRecord = func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue) {
-									for _, meta := range metaors {
-										for _, metaValue := range metaValues {
-											if meta.GetName() == metaValue.Name {
-												if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil && metaValue.MetaValues != nil {
-													nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
+							fillUpRecord = func(record interface{}, metaors []resource.Metaor, metaValues []*resource.MetaValue) {
+								for _, meta := range metaors {
+									for _, metaValue := range metaValues {
+										if meta.GetName() == metaValue.Name {
+											if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil && metaValue.MetaValues != nil {
+												nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
 
-													if nestedFieldValue.Kind() == reflect.Struct {
-														nestedValue := nestedFieldValue.Addr().Interface()
-														for _, fc := range metaResource.Validators {
-															context.AddError(fc(nestedValue, metaValue.MetaValues, context))
-														}
-
-														fillUpRecord(nestedValue, metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-
-														for _, fc := range metaResource.Processors {
-															context.AddError(fc(nestedValue, metaValue.MetaValues, context))
-														}
+												if nestedFieldValue.Kind() == reflect.Struct {
+													nestedValue := nestedFieldValue.Addr().Interface()
+													for _, fc := range metaResource.Validators {
+														context.AddError(fc(nestedValue, metaValue.MetaValues, context))
 													}
 
-													if nestedFieldValue.Kind() == reflect.Slice {
-														nestedValue := reflect.New(nestedFieldValue.Type().Elem())
+													fillUpRecord(nestedValue, metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
 
-														for _, fc := range metaResource.Validators {
-															context.AddError(fc(nestedValue, metaValue.MetaValues, context))
-														}
+													for _, fc := range metaResource.Processors {
+														context.AddError(fc(nestedValue, metaValue.MetaValues, context))
+													}
+												}
 
-														if destroy := metaValue.MetaValues.Get("_destroy"); destroy == nil || fmt.Sprint(destroy.Value) == "0" {
-															fillUpRecord(nestedValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-															if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), nestedValue.Elem().Interface()) {
-																nestedFieldValue.Set(reflect.Append(nestedFieldValue, nestedValue.Elem()))
+												if nestedFieldValue.Kind() == reflect.Slice {
+													nestedValue := reflect.New(nestedFieldValue.Type().Elem())
 
-																for _, fc := range metaResource.Processors {
-																	context.AddError(fc(nestedValue, metaValue.MetaValues, context))
-																}
+													for _, fc := range metaResource.Validators {
+														context.AddError(fc(nestedValue, metaValue.MetaValues, context))
+													}
+
+													if destroy := metaValue.MetaValues.Get("_destroy"); destroy == nil || fmt.Sprint(destroy.Value) == "0" {
+														fillUpRecord(nestedValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+														if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), nestedValue.Elem().Interface()) {
+															nestedFieldValue.Set(reflect.Append(nestedFieldValue, nestedValue.Elem()))
+
+															for _, fc := range metaResource.Processors {
+																context.AddError(fc(nestedValue, metaValue.MetaValues, context))
 															}
 														}
 													}
-													continue
 												}
+												continue
+											}
 
-												if setter := meta.GetSetter(); setter != nil {
-													setter(record, metaValue, context)
-													continue
-												}
+											if setter := meta.GetSetter(); setter != nil {
+												setter(record, metaValue, context)
+												continue
 											}
 										}
 									}
 								}
-
-								fillUpRecord(value, serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-
-								for _, fc := range serializeArgumentResource.Processors {
-									context.AddError(fc(value, metaValue.MetaValues, context))
-								}
-								serializeArgument.SetSerializableArgumentValue(value)
 							}
+
+							fillUpRecord(value, serializeArgumentResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+
+							for _, fc := range serializeArgumentResource.Processors {
+								context.AddError(fc(value, metaValue.MetaValues, context))
+							}
+							serializeArgument.SetSerializableArgumentValue(value)
 						}
-					},
-				})
-			}
+					}
+				},
+			})
 
 			res.NewAttrs("Kind", "SerializableMeta")
 			res.EditAttrs("ID", "Kind", "SerializableMeta")
