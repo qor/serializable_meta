@@ -162,49 +162,44 @@ func (serialize *SerializableMeta) ConfigureQorResourceBeforeInitialize(res reso
 										if meta.GetName() == metaValue.Name {
 											if setter := meta.GetSetter(); setter != nil {
 												setter(record, metaValue, context)
-												continue
 											}
 
 											if metaResource, ok := meta.GetResource().(*admin.Resource); ok && metaResource != nil && metaValue.MetaValues != nil {
 												nestedFieldValue := reflect.Indirect(reflect.ValueOf(record)).FieldByName(meta.GetFieldName())
+												if meta.GetSetter() == nil || reflect.Indirect(nestedFieldValue).Type() == utils.ModelType(metaResource.NewStruct()) {
+													if nestedFieldValue.Kind() == reflect.Struct {
+														nestedValue := nestedFieldValue.Addr().Interface()
+														for _, v := range metaResource.Validators {
+															context.AddError(v.Handler(nestedValue, metaValue.MetaValues, context))
+														}
 
-												if nestedFieldValue.Kind() == reflect.Struct {
-													nestedValue := nestedFieldValue.Addr().Interface()
-													for _, v := range metaResource.Validators {
-														context.AddError(v.Handler(nestedValue, metaValue.MetaValues, context))
+														fillUpRecord(nestedValue, metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+
+														for _, p := range metaResource.Processors {
+															context.AddError(p.Handler(nestedValue, metaValue.MetaValues, context))
+														}
 													}
 
-													fillUpRecord(nestedValue, metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+													if nestedFieldValue.Kind() == reflect.Slice {
+														nestedValue := reflect.New(nestedFieldValue.Type().Elem())
 
-													for _, p := range metaResource.Processors {
-														context.AddError(p.Handler(nestedValue, metaValue.MetaValues, context))
-													}
-												}
+														for _, v := range metaResource.Validators {
+															context.AddError(v.Handler(nestedValue, metaValue.MetaValues, context))
+														}
 
-												if nestedFieldValue.Kind() == reflect.Slice {
-													nestedValue := reflect.New(nestedFieldValue.Type().Elem())
+														if destroy := metaValue.MetaValues.Get("_destroy"); destroy == nil || fmt.Sprint(destroy.Value) == "0" {
+															fillUpRecord(nestedValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
+															if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), nestedValue.Elem().Interface()) {
+																nestedFieldValue.Set(reflect.Append(nestedFieldValue, nestedValue.Elem()))
 
-													for _, v := range metaResource.Validators {
-														context.AddError(v.Handler(nestedValue, metaValue.MetaValues, context))
-													}
-
-													if destroy := metaValue.MetaValues.Get("_destroy"); destroy == nil || fmt.Sprint(destroy.Value) == "0" {
-														fillUpRecord(nestedValue.Interface(), metaResource.GetMetas([]string{}), metaValue.MetaValues.Values)
-														if !reflect.DeepEqual(reflect.Zero(nestedFieldValue.Type().Elem()).Interface(), nestedValue.Elem().Interface()) {
-															nestedFieldValue.Set(reflect.Append(nestedFieldValue, nestedValue.Elem()))
-
-															for _, p := range metaResource.Processors {
-																context.AddError(p.Handler(nestedValue, metaValue.MetaValues, context))
+																for _, p := range metaResource.Processors {
+																	context.AddError(p.Handler(nestedValue, metaValue.MetaValues, context))
+																}
 															}
 														}
 													}
+													continue
 												}
-												continue
-											}
-
-											if setter := meta.GetSetter(); setter != nil {
-												setter(record, metaValue, context)
-												continue
 											}
 										}
 									}
